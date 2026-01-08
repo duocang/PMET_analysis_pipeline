@@ -36,21 +36,22 @@ print_white(){
     printf "${WHITE}$1${NC}"
 }
 
+script_dir=$(cd -- "$(dirname "$0")" && pwd)
+cd "$script_dir"
+data_dir="$script_dir/data"
+fetch_script="$script_dir/scripts/fetch_tair10.sh"
+
 # Give execute permission to all users for the file.
 chmod a+x scripts/cpp_debug_needed/homotypic_promoters.sh
 chmod a+x scripts/gff3sort/gff3sort.pl
 
 ################################ 1. Downloading data #######################################
-download data
-cd data
-if [ -f "TAIR10.gff3" ]; then
-    echo ""
-else
+if [[ ! -s "$data_dir/TAIR10.fasta" || ! -s "$data_dir/TAIR10.gff3" ]]; then
     print_green "Downloading genome and annotation...\n"
-    chmod a+x ./fetch_data.sh
-    bash ./fetch_data.sh
+    bash "$fetch_script"
+else
+    print_green "Genome and annotation are ready!"
 fi
-cd ..
 
 ################################ 2. input parameters ###################################
 # tool

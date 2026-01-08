@@ -44,6 +44,11 @@ print_middle(){
     done <<< "$1"
 }
 
+script_dir=$(cd -- "$(dirname "$0")" && pwd)
+cd "$script_dir"
+data_dir="$script_dir/data"
+fetch_script="$script_dir/scripts/fetch_tair10.sh"
+
 
 echo -e "\n\n"
 print_middle "The purpose of this script is to                                      \n"
@@ -56,14 +61,12 @@ print_middle "                                                                  
 find . -type f \( -name "*.sh" -o -name "*.pl" \) -exec chmod a+x {} \;
 
 ########################## 1. Downloading data #######################################
-cd data
-if [ -f "TAIR10.gff3" ]; then
-    print_green "Genome and annotation are ready!"
-else
+if [[ ! -s "$data_dir/TAIR10.fasta" || ! -s "$data_dir/TAIR10.gff3" ]]; then
     print_fluorescent_yellow "Downloading genome and annotation...\n"
-    bash ./fetch_data.sh
+    bash "$fetch_script"
+else
+    print_green "Genome and annotation are ready!"
 fi
-cd ..
 
 
 start_time=$SECONDS
