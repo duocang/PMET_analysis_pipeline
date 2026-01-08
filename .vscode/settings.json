@@ -1,7 +1,0 @@
-{
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.autopep8"
-    },
-    "python.formatting.provider": "none",
-    "cmake.sourceDirectory": "/Users/nuioi/projects/pmet_project/01_PMETDEV-code/debug/src/indexing"
-}
