@@ -44,7 +44,7 @@ print_middle(){
     done <<< "$1"
 }
 
-script_dir=$(cd -- "$(dirname "$0")" && pwd)
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
 cd "$script_dir"
 data_dir="$script_dir/data"
 fetch_script="$script_dir/scripts/fetch_tair10.sh"
@@ -198,7 +198,7 @@ $HOMOTYPIC               \
 #     ##################################### Heatmap ##################################
 #     print_green "\n\nCreating heatmap...\n"
 
-#     Rscript 05_heatmap.R                        \
+#     Rscript scripts/r/draw_heatmap.R                        \
 #         All                                  \
 #         $plot_output/heatmap.png             \
 #         $heterotypic_output/motif_output.txt \
@@ -207,7 +207,7 @@ $HOMOTYPIC               \
 #         6                                    \
 #         FALSE
 
-#     Rscript 05_heatmap.R                           \
+#     Rscript scripts/r/draw_heatmap.R                           \
 #         Overlap                                 \
 #         $plot_output/heatmap_overlap_unique.png \
 #         $heterotypic_output/motif_output.txt    \
@@ -216,7 +216,7 @@ $HOMOTYPIC               \
 #         6                                       \
 #         TRUE
 
-#     Rscript 05_heatmap.R                        \
+#     Rscript scripts/r/draw_heatmap.R                        \
 #         Overlap                              \
 #         $plot_output/heatmap_overlap.png     \
 #         $heterotypic_output/motif_output.txt \

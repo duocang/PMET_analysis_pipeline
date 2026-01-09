@@ -8,7 +8,9 @@
 
 set -euo pipefail
 
-script_dir=$(cd -- "$(dirname "$0")" && pwd)
+# Project root is parent of pipeline directory
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
+cd "$script_dir"
 
 # Load color helpers or use fallback
 if [ -f "$script_dir/scripts/lib/print_colors.sh" ]; then

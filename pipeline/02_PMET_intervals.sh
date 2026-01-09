@@ -1,6 +1,8 @@
 #!/bin/bash
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# Project root is parent of pipeline directory
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$script_dir"
 print_colors_lib="$script_dir/scripts/lib/print_colors.sh"
 
 if [ ! -f "$print_colors_lib" ]; then
@@ -98,7 +100,7 @@ cat $heterotypic_output/*.txt > $heterotypic_output/motif_output.txt
 rm $heterotypic_output/temp*.txt
 
 #################################### Heatmap ##################################
-Rscript 05_heatmap.R                     \
+Rscript scripts/r/draw_heatmap.R                     \
     Overlap                              \
     $heterotypic_output/heatmap.png      \
     $heterotypic_output/motif_output.txt \

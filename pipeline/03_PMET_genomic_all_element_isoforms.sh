@@ -44,21 +44,23 @@ print_middle(){
     done <<< "$1"
 }
 
-script_dir=$(cd -- "$(dirname "$0")" && pwd)
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
 cd "$script_dir"
 data_dir="$script_dir/data"
 fetch_script="$script_dir/scripts/fetch_tair10.sh"
 
 
+# Give execute permission to all users for the file.
+find . -type f \( -name "*.sh" -o -name "*.pl" \) -exec chmod a+x {} \;
+
+
 echo -e "\n\n"
 print_middle "The purpose of this script is to                                      \n"
-print_middle "  Search motif pairs on the longest isoform of any genomic elemet       "
+print_middle "  1. List all isoforms of genes in each cluster you provide             "
+print_middle "  2. Search motif pairs on each isoform of any genomic elemet           "
 print_middle "                                                                      \n"
 
 
-
-# Give execute permission to all users for the file.
-find . -type f \( -name "*.sh" -o -name "*.pl" \) -exec chmod a+x {} \;
 
 ########################## 1. Downloading data #######################################
 if [[ ! -s "$data_dir/TAIR10.fasta" || ! -s "$data_dir/TAIR10.gff3" ]]; then
@@ -68,20 +70,18 @@ else
     print_green "Genome and annotation are ready!"
 fi
 
-
 start_time=$SECONDS
 ################################ 2. input parameters ###################################
 # tool
 toolDir=scripts
-HOMOTYPIC=$toolDir/PMETindex_genomic_element_megred_isoform.sh
+HOMOTYPIC=$toolDir/PMETindex_genomic_element_all_isoforms.sh
 HETEROTYPIC=$toolDir/pmetParallel
 
 chmod a+x $HOMOTYPIC
 chmod a+x $HETEROTYPIC
 
 threads=8
-res_dir=results/03_genomic_element
-
+res_dir=results/03_genomic_element_isoforms
 
 # homotypic
 overlap="NoOverlap"
@@ -92,7 +92,7 @@ length=1000
 fimothresh=0.05
 distance=1000
 gff3id="gene_id="
-delete_temp=yes
+delete_temp=no
 
 # data
 genome=data/TAIR10.fasta
@@ -114,7 +114,6 @@ esac
 print_fluorescent_yellow "Chosen Genomic Element: $genomic_element"
 print_fluorescent_yellow "GFF3 ID format: $gff3id"
 
-
 # output
 homotypic_output=$res_dir/01_homotypic
 
@@ -128,46 +127,89 @@ icthresh=4
 plot_output=$res_dir/03_plot
 
 mkdir -p $homotypic_output
-mkdir -p $heterotypic_output
-mkdir -p $plot_output
+# mkdir -p $heterotypic_output
+# mkdir -p $plot_output
+
+# ############################## 3. Running homotypic #################################
+# print_green "Running homotypic searching...\n"
+
+# $HOMOTYPIC               \
+#     -r $toolDir          \
+#     -o $homotypic_output \
+#     -e $genomic_element  \
+#     -i $gff3id           \
+#     -k $maxk             \
+#     -n $topn             \
+#     -p $length           \
+#     -v $overlap          \
+#     -u $utr              \
+#     -f $fimothresh       \
+#     -t $threads          \
+#     -d $delete_temp      \
+#     $genome              \
+#     $anno                \
+#     $meme
 
 
+############################ 4. Running heterotypic ###############################
+print_green "\nSearching for heterotypic motif hits..."
 
-############################## 3. Running homotypic #################################
-print_green "Running homotypic searching...\n"
+# 创建一个临时的 R 脚本 Creating a Temporary R Script
+# R 脚本的目的是列出所有的基因isoform The purpose of the R script is to extend all gene isoform
+temp_r_script=$(mktemp)
+# 将 R 代码写入临时文件 Write R code to a temporary file
+cat <<EOF >"$temp_r_script"
+suppressPackageStartupMessages(library(dplyr))
 
-$HOMOTYPIC               \
-    -r $toolDir          \
-    -o $homotypic_output \
-    -e $genomic_element  \
-    -i $gff3id           \
-    -k $maxk             \
-    -n $topn             \
-    -p $length           \
-    -v $overlap          \
-    -u $utr              \
-    -f $fimothresh       \
-    -t $threads          \
-    -d $delete_temp      \
-    $genome              \
-    $anno                \
-    $meme
+args            <- commandArgs(trailingOnly = TRUE)
+input_file      <- args[1]
+output_file     <- args[2]
+max_num_isoform <- as.integer(args[3])
+universe        <- args[4]
 
+full_genes    <- read.table(universe)\$V1
+genes_cluster <- read.table(input_file, header = FALSE, stringsAsFactors = FALSE)
+
+# 扩展基因列表 Expand the gene isoforms
+expanded_genes <- lapply(genes_cluster\$V2, function(gene) {
+    paste0(gene, ".", seq_len(max_num_isoform))
+}) %>% unlist()
+
+expanded_clustter <- lapply(genes_cluster\$V1, function(x){rep(x, max_num_isoform)}) %>% unlist()
+
+df <- data.frame(expanded_clustter, expanded_genes) %>%
+  filter(expanded_genes %in% full_genes)
+
+write.table(df, file = output_file, quote = FALSE, row.names = FALSE, col.names = FALSE)
+EOF
+
+# 从universe.txt中获取所有基因中isoform的最大数值
+# Get the maximum value of isoform in all genes from universe.txt
+max_num_isoform=0
+while read -r line; do
+    num=${line##*.}
+    if (( num > max_num_isoform )); then
+        max_num_isoform=$num
+    fi
+done < $homotypic_output/universe.txt
+
+# Perform pmet analysis on different types of gene clusters
 for task in "salt_top300" "random_genes_300" "genes_cell_type_treatment" "gene_cortex_epidermis_pericycle" "heat_top300"; do
+    print_orange "Gens: $task"
 
     heterotypic_output=${heterotypic_output}_${task}
     plot_output=${plot_output}_${task}
     gene_input_file=data/genes/$task.txt
     mkdir -p $heterotypic_output
     mkdir -p $plot_output
+    # create gene with all possible isofrms in clusters
+    Rscript "$temp_r_script"                     \
+        "$gene_input_file"                       \
+        "$heterotypic_output/new_genes_temp.txt" \
+         $max_num_isoform                        \
+         $homotypic_output/universe.txt
 
-    ############################ 4. Running heterotypic ###############################
-    print_green "\n\nSearching for heterotypic motif hits...\n"
-
-    # remove genes not present in pre-computed pmet index
-    grep -Ff $homotypic_output/universe.txt $gene_input_file > $heterotypic_output/new_genes_temp.txt
-
-
+    ##################################### PMET ##################################
     $HETEROTYPIC                                     \
         -d .                                         \
         -g $heterotypic_output/new_genes_temp.txt    \
@@ -191,39 +233,38 @@ for task in "salt_top300" "random_genes_300" "genes_cell_type_treatment" "gene_c
     minutes=$(( (elapsed_time%3600)/60 ))
     seconds=$((elapsed_time%60))
     print_orange "      Time taken: $days day $hours hour $minutes minute $seconds second\n"
-
-
-    print_green "DONE: heterotypic search"
+    # print_green "DONE: heterotypic search"
 
     ##################################### Heatmap ##################################
-    print_green "\n\nCreating heatmap...\n"
+    print_green "Creating heatmap..."
 
-    Rscript 05_heatmap.R                        \
+    Rscript scripts/r/draw_heatmap.R                     \
         All                                  \
         $plot_output/heatmap.png             \
         $heterotypic_output/motif_output.txt \
-        15                                    \
+        15                                   \
         3                                    \
         6                                    \
-        FALSE
+        FALSE > $plot_output/motifs.txt
 
-    Rscript 05_heatmap.R                           \
+    Rscript scripts/r/draw_heatmap.R                        \
         Overlap                                 \
         $plot_output/heatmap_overlap_unique.png \
         $heterotypic_output/motif_output.txt    \
-        15                                       \
+        15                                      \
         3                                       \
         6                                       \
-        TRUE
+        TRUE > $plot_output/log.txt
 
-    Rscript 05_heatmap.R                        \
+    Rscript scripts/r/draw_heatmap.R                     \
         Overlap                              \
         $plot_output/heatmap_overlap.png     \
         $heterotypic_output/motif_output.txt \
-        15                                    \
+        15                                   \
         3                                    \
         6                                    \
-        FALSE
+        FALSE > $plot_output/log.txt
+    rm -rf $plot_output/log.txt
 done
 # method
 # filename
@@ -232,3 +273,5 @@ done
 # histgram_ncol
 # histgram_width
 # unique_cmbination
+
+rm "$temp_r_script"

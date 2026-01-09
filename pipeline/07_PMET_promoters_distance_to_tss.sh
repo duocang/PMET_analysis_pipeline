@@ -36,7 +36,8 @@ print_white(){
     printf "${WHITE}$1${NC}"
 }
 
-script_dir=$(cd -- "$(dirname "$0")" && pwd)
+
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
 cd "$script_dir"
 data_dir="$script_dir/data"
 fetch_script="$script_dir/scripts/fetch_tair10.sh"

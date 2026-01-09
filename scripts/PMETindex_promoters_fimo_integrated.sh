@@ -131,10 +131,10 @@ print_fluorescent_yellow "     3. Extracting chromosome, start, end, gene"
 # parse up the .bed for promoter extraction, 'gene_id'
 # 使用grep查找字符串 check if gene_id is present
 if grep -q "$gff3id" "$indexingOutputDir/genelines.gff3"; then
-    python3 "$toolDir/parse_genelines.py" "$gff3id" "$indexingOutputDir/genelines.gff3" "$bedfile"
+    python3 "$toolDir/python/parse_genelines.py" "$gff3id" "$indexingOutputDir/genelines.gff3" "$bedfile"
 else
     gff3id='ID='
-    python3 "$toolDir/parse_genelines.py" "$gff3id" "$indexingOutputDir/genelines.gff3" "$bedfile"
+    python3 "$toolDir/python/parse_genelines.py" "$gff3id" "$indexingOutputDir/genelines.gff3" "$bedfile"
 fi
 # -------------------------------------------------------------------------------------------
 # 4. filter invalid genes: start should be smaller than end
@@ -149,10 +149,10 @@ mv "$indexingOutputDir/genelines_valid.bed" "$bedfile"
 # start and end positions specify the physical location of the gene, rather than the direction of expression or translation.
 
 print_fluorescent_yellow "        Calculate length of chromosome (length_of_chromosome.txt)"
-python3 "$toolDir/calculate_chromosome_length.py" "$gff3file" "$indexingOutputDir/length_of_chromosome.txt"
+python3 "$toolDir/python/calculate_chromosome_length.py" "$gff3file" "$indexingOutputDir/length_of_chromosome.txt"
 
 print_fluorescent_yellow "        Calculate length of space to TSS (length_to_tss.txt)"
-python3 "$toolDir/calculate_length_to_tss.py" \
+python3 "$toolDir/python/calculate_length_to_tss.py" \
     "$bedfile" \
     "$indexingOutputDir/length_of_chromosome.txt" \
     "$indexingOutputDir/length_to_tss.txt"
@@ -210,14 +210,14 @@ fi
 # -------------------------------------------------------------------------------------------
 # 10. check split promoters. if so, keep the bit closer to the TSS
 print_fluorescent_yellow "    10. Checking split promoter (if so):  keep the bit closer to the TSS (promoters.bed)"
-python3 "$toolDir/assess_integrity.py" "$indexingOutputDir/promoters.bed"
+python3 "$toolDir/python/assess_integrity.py" "$indexingOutputDir/promoters.bed"
 
 # -------------------------------------------------------------------------------------------
 # 11. add 5' UTR
 utr_lower=$(echo "$utr" | tr '[:upper:]' '[:lower:]')
 if [[ "$utr_lower" == "yes" || "$utr_lower" == "y" ]]; then
     print_fluorescent_yellow "    11. Adding UTRs...";
-	python3 "$toolDir/parse_utrs.py"      \
+	python3 "$toolDir/python/parse_utrs.py"      \
         "$indexingOutputDir/promoters.bed" \
         "$indexingOutputDir/sorted.gff3"   \
         "$universefile"
@@ -259,9 +259,9 @@ fasta-get-markov "$indexingOutputDir/promoters.fa" > "$indexingOutputDir/promote
 # 17. IC.txt
 print_fluorescent_yellow "    17. Generating information content (IC.txt)"
 mkdir -p "$indexingOutputDir/memefiles"
-python3 "$toolDir/parse_memefile.py" "$memefile" "$indexingOutputDir/memefiles/"
+python3 "$toolDir/python/parse_memefile.py" "$memefile" "$indexingOutputDir/memefiles/"
 python3                                         \
-    "$toolDir/calculateICfrommeme_IC_to_csv.py" \
+    "$toolDir/python/calculateICfrommeme_IC_to_csv.py" \
     "$indexingOutputDir/memefiles/"             \
     "$indexingOutputDir/IC.txt"
 
@@ -269,7 +269,7 @@ python3                                         \
 # 18. individual motif files from user's meme file (reusing memefiles directory from step 17)
 print_fluorescent_yellow "    18. Spliting motifs into individual meme files (folder memefiles)"
 rm -rf "$indexingOutputDir/memefiles/"*
-python3 "$toolDir/parse_memefile_batches.py" "$memefile" "$indexingOutputDir/memefiles/" "$threads"
+python3 "$toolDir/python/parse_memefile_batches.py" "$memefile" "$indexingOutputDir/memefiles/" "$threads"
 
 # -------------------------------- Run fimo and pmetindex --------------------------
 # mkdir -p $indexingOutputDir/fimohits

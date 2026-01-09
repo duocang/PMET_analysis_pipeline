@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # ==================== Setup ====================
-script_dir=$(cd -- "$(dirname "$0")" && pwd)
+# Project root is parent of pipeline directory
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
 cd "$script_dir"
 source scripts/lib/print_colors.sh
 
@@ -96,8 +97,8 @@ rm -f "$heterotypic_output"/temp*.txt "$gene_tmp"
 # ==================== 3. Heatmap ====================
 print_green "\n[3/3] Creating heatmaps..."
 
-Rscript 05_heatmap.R All     "$plot_output/heatmap.png"                "$heterotypic_output/motif_output.txt" 5 3 6 FALSE
-Rscript 05_heatmap.R Overlap "$plot_output/heatmap_overlap_unique.png" "$heterotypic_output/motif_output.txt" 5 3 6 TRUE
-Rscript 05_heatmap.R Overlap "$plot_output/heatmap_overlap.png"        "$heterotypic_output/motif_output.txt" 5 3 6 FALSE
+Rscript scripts/r/draw_heatmap.R All     "$plot_output/heatmap.png"                "$heterotypic_output/motif_output.txt" 5 3 6 FALSE
+Rscript scripts/r/draw_heatmap.R Overlap "$plot_output/heatmap_overlap_unique.png" "$heterotypic_output/motif_output.txt" 5 3 6 TRUE
+Rscript scripts/r/draw_heatmap.R Overlap "$plot_output/heatmap_overlap.png"        "$heterotypic_output/motif_output.txt" 5 3 6 FALSE
 
 print_green "\nDone!"

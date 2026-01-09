@@ -36,6 +36,9 @@ print_white(){
     printf "${WHITE}$1${NC}"
 }
 
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
+cd "$script_dir"
+
 output=results/08_heterotypic_promoters_single_CPU
 indexoutput=data/homotypic_promoters
 gene_input_file=data/gene.txt
@@ -60,7 +63,7 @@ scripts/pmet                                \
 
 # rm $gene_input_file"temp"
 
-Rscript 05_heatmap.R         \
+Rscript scripts/r/draw_heatmap.R         \
     Overlap                  \
     $output/heatmap.png      \
     $output/motif_output.txt
@@ -92,7 +95,7 @@ rm $gene_input_file"temp"
 
 
 
-Rscript 05_heatmap.R             \
+Rscript scripts/r/draw_heatmap.R             \
     Overlap                      \
     $outputTemp/heatmap.png      \
     $outputTemp/motif_output.txt

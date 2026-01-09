@@ -30,6 +30,9 @@ print_white(){
     NC='\033[0m' # No Color
     printf "${WHITE}$1${NC}"
 }
+
+script_dir=$(cd -- "$(dirname "$0")/.." && pwd)
+cd "$script_dir"
 ################################# Parameters #######################################
 # tool
 toolDir=scripts

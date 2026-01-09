@@ -13,7 +13,7 @@ This is PMET.
 ├── 02_heterotypic_promoters_single_CPU.sh
 ├── 03_test_new_fimo.sh
 ├── 04_new_fimo_vs_old_fimo_plus_index.sh
-├── 05_heatmap.R
+├── scripts/r/draw_heatmap.R
 ├── LICENSE.md
 ├── data
 ├── results
@@ -80,8 +80,6 @@ bash 01_homotypic_intervals.sh
 bash 02_heterotypic_intervals.sh
 ```
 
-
-
 ## 2. TEST new FIMO
 
 Before running `PMET index`, we need to run FIMO to find all the homotypic motifs, and then `PMET index` will use the results from FIMO to run. This process will consume **IO** resources.
@@ -103,11 +101,9 @@ Using the hardware specifications listed below, the traditional combination of F
 - Intel i9-12900K
 - Samsung 980 Pro SSD
 
-An additional consideration is the potential to divide the meme files (motifs) into segments and employ `GNU Parallel` for concurrent processing. This approach would decrease run times. Moreover, it would amplify the efficiency of  `NEW FIMO`. Given that IO resources are finite, the IO resource usage of the combined `FIMO` and `PMET index` increases multiplicatively. **No less time with more threads**.
+An additional consideration is the potential to divide the meme files (motifs) into segments and employ `GNU Parallel` for concurrent processing. This approach would decrease run times. Moreover, it would amplify the efficiency of `NEW FIMO`. Given that IO resources are finite, the IO resource usage of the combined `FIMO` and `PMET index` increases multiplicatively. **No less time with more threads**.
 
 In contrast, `NEW FIMO` circumvents this issue entirely.
-
-
 
 ## 3. Tools needed
 
