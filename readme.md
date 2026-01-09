@@ -4,7 +4,7 @@ PMET (Paired Motif Enrichment Test) is a tool for identifying enriched motif pai
 
 ## Motif Pair Enrichment Heatmap
 
-![PMET motif pair enrichment heatmap](results/01_PMET_promoter/plot/heatmap_overlap_unique.png)
+![PMET motif pair enrichment heatmap](data/heatmap_overlap_unique.png)
 
 This repository contains a visualization of enriched motif pairs across different gene clusters, generated using the PMET (Paired Motif Enrichment Test) tool. The heatmap above illustrates the enrichment patterns of motif pairs in various conditions and tissues, specifically focusing on cortex and epidermis with different treatment states denoted as "up" or "down".
 
