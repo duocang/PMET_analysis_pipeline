@@ -1,0 +1,147 @@
+#!/bin/bash
+# ==============================================================================
+# PMET Analysis Pipeline Runner
+# ==============================================================================
+# Interactive menu to select and run analysis pipelines
+# ==============================================================================
+
+set -euo pipefail
+
+script_dir=$(cd -- "$(dirname "$0")" && pwd)
+pipeline_dir="$script_dir/pipeline"
+
+# Load color helpers
+if [ -f "$script_dir/scripts/lib/print_colors.sh" ]; then
+    source "$script_dir/scripts/lib/print_colors.sh"
+else
+    print_green()  { printf "\033[32m%s\033[0m\n" "$1"; }
+    print_orange() { printf "\033[33m%s\033[0m\n" "$1"; }
+    print_yellow() { printf "\033[93m%s\033[0m\n" "$1"; }
+    print_red()    { printf "\033[31m%s\033[0m\n" "$1"; }
+    print_white()  { printf "\033[37m%s\033[0m" "$1"; }
+fi
+
+# ==============================================================================
+# Pipeline Descriptions
+# ==============================================================================
+
+get_description() {
+    case "$1" in
+        00_requirements_reminder.sh)       echo "Check system requirements and setup PMET environment" ;;
+        01_PMET_promoter.sh)               echo "Run PMET on promoter regions" ;;
+        02_PMET_intervals.sh)              echo "Run PMET on genomic intervals (e.g., ATAC-seq peaks)" ;;
+        03_PMET_genomic_all_element_isoforms.sh)      echo "Run PMET on genomic elements (all isoforms)" ;;
+        03_PMET_genomic_element_longest_isoform.sh)   echo "Run PMET on genomic elements (longest isoform only)" ;;
+        03_PMET_genomic_merged_element_isoforms.sh)   echo "Run PMET on genomic elements (merged isoforms)" ;;
+        06_PMET_promoter_benchmark_parameters.sh)     echo "Benchmark PMET parameters on promoters" ;;
+        07_PMET_promoters_distance_to_tss.sh)         echo "Analyze promoter motifs with distance to TSS" ;;
+        08_heterotypic_promoters_single_CPU.sh)       echo "Run heterotypic motif analysis (single CPU)" ;;
+        *) echo "No description available" ;;
+    esac
+}
+
+# ==============================================================================
+# Functions
+# ==============================================================================
+
+show_header() {
+    clear
+    print_yellow "╔══════════════════════════════════════════════════════════════════╗"
+    print_yellow "║              PMET Analysis Pipeline Runner                       ║"
+    print_yellow "╚══════════════════════════════════════════════════════════════════╝"
+    echo
+}
+
+show_menu() {
+    print_orange "Available Pipelines:"
+    print_orange "────────────────────────────────────────────────────────────────────"
+    echo
+
+    local i=0
+    for script in "${pipelines[@]}"; do
+        local desc=$(get_description "$script")
+        print_white "  [$i] "
+        print_green "$script"
+        print_orange "      $desc"
+        echo
+        i=$((i + 1))
+    done
+
+    print_orange "────────────────────────────────────────────────────────────────────"
+    print_white "  [q] "
+    echo "Quit"
+    echo
+}
+
+run_pipeline() {
+    local script="$1"
+    local script_path="$pipeline_dir/$script"
+
+    if [ ! -f "$script_path" ]; then
+        print_red "Error: Script not found: $script_path"
+        return 1
+    fi
+
+    echo
+    print_yellow "══════════════════════════════════════════════════════════════════"
+    print_green "Running: $script"
+    print_yellow "══════════════════════════════════════════════════════════════════"
+    echo
+
+    bash "$script_path"
+    local exit_code=$?
+
+    echo
+    if [ $exit_code -eq 0 ]; then
+        print_green "✓ Pipeline completed successfully!"
+    else
+        print_red "✗ Pipeline exited with code: $exit_code"
+    fi
+
+    echo
+    print_white "Press Enter to continue..."
+    read -r
+}
+
+# ==============================================================================
+# Main
+# ==============================================================================
+
+# Get list of pipelines
+pipelines=()
+for f in "$pipeline_dir"/*.sh; do
+    [ -f "$f" ] && pipelines+=("$(basename "$f")")
+done
+
+if [ ${#pipelines[@]} -eq 0 ]; then
+    print_red "No pipeline scripts found in $pipeline_dir"
+    exit 1
+fi
+
+# Main loop
+while true; do
+    show_header
+    show_menu
+
+    print_white "Select a pipeline [0-$((${#pipelines[@]}-1))] or [q]uit: "
+    read -r choice
+
+    case "$choice" in
+        q|Q)
+            print_green "Goodbye!"
+            exit 0
+            ;;
+        [0-9]*)
+            if [ "$choice" -ge 0 ] 2>/dev/null && [ "$choice" -lt ${#pipelines[@]} ] 2>/dev/null; then
+                run_pipeline "${pipelines[$choice]}"
+            else
+                print_red "Invalid selection: $choice"
+                sleep 1
+            fi
+            ;;
+        *)
+            print_red "Invalid input. Enter a number or 'q' to quit."
+            sleep 1
+            ;;
+    esac
+done

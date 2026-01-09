@@ -152,7 +152,7 @@ fi
 
 # get peak lengths
 #python3 $pmetroot/parse_promoter_lengths.py peaks.bed
-python3 $pmetroot/parse_promoter_lengths_from_fasta.py peaks.fa
+python3 $pmetroot/python/parse_promoter_lengths_from_fasta.py peaks.fa
 
 #now we can actually FIMO our way to victory
 fasta-get-markov peaks.fa > peaks.bg
@@ -167,9 +167,9 @@ fasta-get-markov peaks.fa > peaks.bg
 
 mkdir memefiles
 
-python3 $pmetroot/parse_memefile.py $memedir
+python3 $pmetroot/python/parse_memefile.py $memedir
 
-python3 $pmetroot/calculateICfrommeme.py
+python3 $pmetroot/python/calculateICfrommeme.py
 
 
 runIndexing () {

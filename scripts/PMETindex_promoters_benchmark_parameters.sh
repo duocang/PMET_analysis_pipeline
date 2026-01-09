@@ -214,8 +214,8 @@ for promlength in ${promlengthRange[@]}; do
     fi
 
     # -------------------------------------------------------------------------------------------
-    # 3. extract chromosome , start, end, gene ('gene_id' for input) ...
-    print_fluorescent_yellow "     3.  Extracting chromosome, start, end, gene ..."
+    # 3. extract chromosome , start, end, gene ('gene_id' for input)
+    print_fluorescent_yellow "     3.  Extracting chromosome, start, end, gene"
 
     # 使用grep查找字符串 check if gene_id is present
     if grep -q "$gff3id" "$indexingOutputDir/genelines.gff3"; then
@@ -462,11 +462,11 @@ for promlength in ${promlengthRange[@]}; do
             ((completedIterations++))
             # -------------------------------- Run fimo and pmetindex --------------------------
             print_green "$(date '+%Y-%m-%d %H:%M:%S') - (${completedIterations}/${totalIterations}) Running FIMO and PMET indexing with ${threads} CPUS......"
-            print_green "Promoter legnth: $promlength"
-            print_green "MaxK           : $maxk"
-            print_green "Topn           : $topn"
-            print_green "Fimo threshold : $fimothresh"
-            print_green "Indexing output: $indexingOutputDir"
+            print_green "    Promoter legnth: $promlength"
+            print_green "    MaxK           : $maxk"
+            print_green "    Topn           : $topn"
+            print_green "    Fimo threshold : $fimothresh"
+            print_green "    Indexing output: $indexingOutputDir"
 
             start_time=$SECONDS
 
@@ -489,7 +489,7 @@ for promlength in ${promlengthRange[@]}; do
                     --bgfile $indexingOutputDir/promoters.bg \
                     $memefile                                \
                     $indexingOutputDir/promoters.fa          \
-                    $indexingOutputDir/promoter_lengths.txt > $indexingOutputDir/pmetindex.log
+                    $indexingOutputDir/promoter_lengths.txt
             }
             export -f runFimoIndexing
 
