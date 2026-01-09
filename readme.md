@@ -2,6 +2,21 @@
 
 PMET (Paired Motif Enrichment Test) is a tool for identifying enriched motif pairs in genomic sequences.
 
+## Motif Pair Enrichment Heatmap
+
+![PMET motif pair enrichment heatmap](results/01_PMET_promoter/plot/heatmap_overlap_unique.png)
+
+This repository contains a visualization of enriched motif pairs across different gene clusters, generated using the PMET (Paired Motif Enrichment Test) tool. The heatmap above illustrates the enrichment patterns of motif pairs in various conditions and tissues, specifically focusing on cortex and epidermis with different treatment states denoted as "up" or "down".
+
+Key Features:
+
+- Gene clusters: Rows represent different gene clusters associated with several transcription factors.
+- Motif pair enrichment: Colors represent the enrichment of motif pairs, with each color corresponding to a specific condition.
+- Conditions: Cortex_flg22_up, Cortex_pep1_up, Epidermis_pep1_do, Cortex_pep1_do, Epidermis_flg22_up, Epidermis_pep1_up.
+- Visualization details: The intensity and hue indicate enrichment strength, enabling quick assessment of which gene clusters are enriched under specific conditions.
+
+This visualization serves as an effective tool for exploring the interactions between motifs under diverse biological contexts, facilitating a deeper understanding of gene regulation mechanisms in different tissues.
+
 ## Project Structure
 
 ```
