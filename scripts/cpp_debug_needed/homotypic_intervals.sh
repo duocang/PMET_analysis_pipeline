@@ -1,213 +1,307 @@
 #!/bin/bash
-set -e
+# ==============================================================================
+# PMET Index for Genomic Intervals
+# ==============================================================================
+# Author  : Charlotte Rich (22.1.18)
+# Purpose : Creates PMET index for Paired Motif Enrichment Test
+# Requires: scripts/lib/print_colors.sh, scripts/lib/timer.sh
+# ==============================================================================
 
-# disable warnings
+set -e
 set -o errexit
 set -o pipefail
 
-# 22.1.18 Charlotte Rich
-# last edit: 7.2.18 - removed the make 1 big fimohits files
+# ==============================================================================
+# INITIALIZATION
+# ==============================================================================
 
-# cl_index_wrapper.sh
-# mac -> server Version differences
-# ggrep = grep
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+project_root=$(cd "$script_dir/../.." && pwd)
+pmetDir="build"
 
-# Called when user selects 'Genomic Intervals'
-# Input files are genomic intevals fasta file, meme file location, gene clusters file
-# Other inputs N and k
+# Source shared libraries
+for lib in print_colors timer; do
+    lib_file="$project_root/scripts/lib/$lib.sh"
+    if [ ! -f "$lib_file" ]; then
+        echo "ERROR: Missing library at $lib_file" >&2
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$lib_file"
+done
 
-function usage () {
+start_time=$SECONDS
+
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
+
+function usage() {
     cat >&2 <<EOF
-        USAGE: PMETindexgenome [options] <genome> <gff3> <memefile>
 
-        Creates PMET index for Paired Motif Enrichment Test using genome files.
-        Required arguments:
-        -r <PMETindex_path>	: Full path of python scripts called from this file. Required.
-        -i <gff3_identifier> : gene identifier in gff3 file e.g. gene_id=
+USAGE: $(basename "$0") [options] <genome> <memefile>
 
-        Optional arguments:
-        -o <output_directory> : Output directory for results.
-        -n <topn>	: How many top promoter hits to take per motif. Default=5000
-        -k <max_k>	: Maximum motif hits allowed within each promoter.  Default: 5
-        -f <fimo_threshold> : Specify a minimum quality for hits matched by fimo. Default: 0.05
-        -t <threads>: Number of threads. Default: 4
+Creates PMET index for Paired Motif Enrichment Test using genomic intervals.
+
+POSITIONAL ARGUMENTS:
+    <genome>              Genomic interval FASTA file
+    <memefile>            MEME format motif file
+
+REQUIRED OPTIONS:
+    -o <directory>        Output directory for results
+
+OPTIONAL ARGUMENTS:
+    -r <path>             Scripts root directory         [default: scripts]
+    -n <topn>             Top N hits per motif           [default: 5000]
+    -k <maxk>             Max K hits per interval        [default: 5]
+    -f <threshold>        FIMO p-value threshold         [default: 0.05]
+    -t <threads>          Parallel threads               [default: 4]
+    -h                    Show this help message
+
+EXAMPLE:
+    $(basename "$0") -o results/output -t 8 genome.fa motifs.meme
+
 EOF
 }
 
 function error_exit() {
-    echo "ERROR: $1" >&2
+    print_red "\n[ERROR] $1"
     usage
+    print_elapsed_time_with_status "$start_time" "error" "$1"
     exit 1
 }
 
-print_red(){
-    RED='\033[0;31m'
-    NC='\033[0m' # No Color
-    printf "${RED}$1${NC}\n"
-}
+# ==============================================================================
+# DEFAULT ARGUMENTS
+# ==============================================================================
 
-print_green(){
-    GREEN='\033[0;32m'
-    NC='\033[0m' # No Color
-    printf "${GREEN}$1${NC}\n"
-}
-
-print_orange(){
-    ORANGE='\033[0;33m'
-    NC='\033[0m' # No Color
-    printf "${ORANGE}$1${NC}\n"
-}
-
-print_fluorescent_yellow(){
-    FLUORESCENT_YELLOW='\033[1;33m'
-    NC='\033[0m' # No Color
-    printf "${FLUORESCENT_YELLOW}$1${NC}\n"
-}
-
-print_white(){
-    WHITE='\033[1;37m'
-    NC='\033[0m' # No Color
-    printf "${WHITE}$1${NC}"
-}
-
-
-# set up arguments
 topn=5000
 maxk=5
 fimothresh=0.05
 pmetroot="scripts"
-threads=8
+threads=4
 
-outputdir=
-genomefile=
-memefile=
+outputdir=""
+genomefile=""
+memefile=""
 
-# check if arguments have been specified
-if [ $# -eq 0 ]
-then
-    echo "No arguments supplied"  >&2
-    usage
-    exit 1
+# ==============================================================================
+# ARGUMENT PARSING
+# ==============================================================================
+
+if [ $# -eq 0 ]; then
+    error_exit "No arguments supplied"
 fi
 
-# bring in arguments
-while getopts ":r:o:k:n:f:t:" options; do
-    case $options in
-        r) print_white "Full path of PMET_index                : "; print_orange "$OPTARG" >&2
-        pmetroot=$OPTARG;;
-        o) print_white "Output directory for results           : "; print_orange "$OPTARG" >&2
-        outputdir=$OPTARG;;
-        n) print_white "Top n promoter hits to take per motif  : "; print_orange "$OPTARG" >&2
-        topn=$OPTARG;;
-        k) print_white "Top k motif hits within each promoter  : "; print_orange "$OPTARG" >&2
-        maxk=$OPTARG;;
-        f) print_white "Fimo threshold                         : "; print_orange "$OPTARG" >&2
-        fimothresh=$OPTARG;;
-        t) print_white "Number of threads                      : "; print_orange "$OPTARG" >&2
-        threads=$OPTARG;;
-        \?) print_red "Invalid option: -$OPTARG" >&2
-        exit 1;;
-        :)  print_red "Option -$OPTARG requires an argument." >&2
-        exit 1;;
+while getopts ":r:o:k:n:f:t:h" opt; do
+    case $opt in
+        r) pmetroot="$OPTARG"   ;;
+        o) outputdir="$OPTARG"  ;;
+        n) topn="$OPTARG"       ;;
+        k) maxk="$OPTARG"       ;;
+        f) fimothresh="$OPTARG" ;;
+        t) threads="$OPTARG"    ;;
+        h) usage; exit 0        ;;
+        \?) error_exit "Invalid option: -$OPTARG" ;;
+        :)  error_exit "Option -$OPTARG requires an argument" ;;
     esac
 done
 
-# rename input file variable
 shift $((OPTIND - 1))
-genomefile=$1
-memefile=$2
+genomefile="${1:-}"
+memefile="${2:-}"
 
-print_white "Genomic interval file                  : "; print_orange $genomefile
-print_white "Motif meme file                        : "; print_orange $memefile
+# ==============================================================================
+# INPUT VALIDATION
+# ==============================================================================
 
-[ ! -d $outputdir ] && mkdir $outputdir
-# cd $outputdir
+[ -z "$genomefile" ] && error_exit "Missing required argument: <genome> file"
+[ -z "$memefile" ]   && error_exit "Missing required argument: <memefile>"
+[ -z "$outputdir" ]  && error_exit "Missing required option: -o <output_directory>"
+[ ! -f "$genomefile" ] && error_exit "Genome file not found: $genomefile"
+[ ! -f "$memefile" ]   && error_exit "Meme file not found: $memefile"
 
-print_green "Preparing sequences...";
+# ==============================================================================
+# DISPLAY CONFIGURATION
+# ==============================================================================
 
-# final pmet binary requires the universe file. Need to create this if validation scrip didnt.
-# In promoters version, this is initially all genes in gff3 file. This version is used to add UTRs if
-# requested, but any genes not in promoter_lengths file are filtered out before we get to PMET binary stage
-# In this version we can just take a copy of all IDs in promoter lengths as we dont to UTR stuff
+print_green "\n╔══════════════════════════════════════════════════════════════════╗"
+print_green "║                    PMET INDEX CONFIGURATION                      ║"
+print_green "╚══════════════════════════════════════════════════════════════════╝"
+print_white "  Genome file            : "; print_orange "$genomefile"
+print_white "  Meme file              : "; print_orange "$memefile"
+print_white "  Output directory       : "; print_orange "$outputdir"
+print_green "────────────────────────────────────────────────────────────────────"
+print_white "  Top N hits per motif   : "; print_orange "$topn"
+print_white "  Max K hits per interval: "; print_orange "$maxk"
+print_white "  FIMO threshold         : "; print_orange "$fimothresh"
+print_white "  Parallel threads       : "; print_orange "$threads"
+print_green "────────────────────────────────────────────────────────────────────\n"
 
-universefile=$outputdir/universe.txt
+mkdir -p "$outputdir"
+
+# ==============================================================================
+# STEP 1: PREPARE SEQUENCES
+# ==============================================================================
+
+# Preprocess FASTA - replace ':' with '__COLON__' in sequence names
+# FIMO has issues parsing sequence names containing ':'
+genomefile_temp="${genomefile%.fa}_temp.fa"
+sed 's/^\(>.*\):/\1__COLON__/g' "$genomefile" > "$genomefile_temp"
+print_orange "   └─ Created temporary file with sanitized sequence names"
+
+
+
+print_green "┌─ Step 1/4: Preparing sequences..."
+step_start=$SECONDS
+
+universefile="$outputdir/universe.txt"
 
 if [[ ! -f "$universefile" || ! -f "$outputdir/promoter_lengths.txt" ]]; then
-    # should have been done by consistency checker
-    # *** ADD THE DEPUPLICATION OF THE FASTA FILE HERE ****
-    python3 $pmetroot/deduplicate.py \
-            $genomefile \
-            $outputdir/no_duplicates.fa
+    python3 "$pmetroot/python/deduplicate.py" \
+            "$genomefile_temp" \
+            "$outputdir/no_duplicates.fa" \
+        || error_exit "Deduplication failed"
 
-    # generate the promoter lengths file from the fasta file
-    python3 $pmetroot/parse_promoter_lengths_from_fasta.py \
-            $outputdir/no_duplicates.fa \
-            $outputdir/promoter_lengths.txt
+    python3 "$pmetroot/python/parse_promoter_lengths_from_fasta.py" \
+            "$outputdir/no_duplicates.fa" \
+            "$outputdir/promoter_lengths.txt" \
+        || error_exit "Promoter length parsing failed"
 
-    cut -f 1  $outputdir/promoter_lengths.txt > $universefile
+    cut -f1 "$outputdir/promoter_lengths.txt" > "$universefile"
+    [ -f "$outputdir/no_duplicates.fa" ] && rm -f "$outputdir/no_duplicates.fa"
 fi
 
-# now we can actually FIMO our way to victory
-fasta-get-markov $genomefile > $outputdir/genome.bg
-# FIMO barfs ALL the output. that's not good. time for individual FIMOs
-# on individual MEME-friendly motif files too
+print_elapsed_time "$step_start"
 
-print_green "Processing motifs...";
+# ==============================================================================
+# STEP 2: BUILD BACKGROUND MODEL & PROCESS MOTIFS
+# ==============================================================================
 
-### Make motif  files from user's meme file
-[ ! -d $outputdir/memefiles ] && mkdir $outputdir/memefiles
+print_green "┌─ Step 2/4: Building background model and processing motifs..."
+step_start=$SECONDS
 
-python3 $pmetroot/parse_memefile.py \
-        $memefile                   \
-        $outputdir/memefiles/
+fasta-get-markov "$genomefile_temp" > "$outputdir/genome.bg" \
+    || error_exit "fasta-get-markov failed"
 
-### creates IC.txt tsv file from, motif files
-python3 $pmetroot/calculateICfrommeme_IC_to_csv.py \
-        $outputdir/memefiles/                      \
-        $outputdir/IC.txt
+mkdir -p "$outputdir/memefiles"
 
-### Create a fimo hits file form each motif file
-[ ! -d $outputdir/fimo ] && mkdir $outputdir/fimo
-[ ! -d $outputdir/fimohits ] && mkdir $outputdir/fimohits
+python3 "$pmetroot/python/parse_memefile.py" \
+        "$memefile" \
+        "$outputdir/memefiles/" \
+    || error_exit "parse_memefile failed"
 
-shopt -s nullglob # prevent loop produncing '*.txt'
+python3 "$pmetroot/python/calculateICfrommeme_IC_to_csv.py" \
+        "$outputdir/memefiles/" \
+        "$outputdir/IC.txt" \
+    || error_exit "calculateICfrommeme failed"
 
+mkdir -p "$outputdir/fimo" "$outputdir/fimohits"
+
+shopt -s nullglob
 nummotifs=$(grep -c '^MOTIF' "$memefile")
-print_orange "    $nummotifs motifs found"
+print_orange "   └─ Found $nummotifs motifs"
 
-print_green "Running fimo..."
+print_elapsed_time "$step_start"
+
+# # ==============================================================================
+# # STEP 3: RUN FIMO IN PARALLEL
+# # ==============================================================================
+
+# print_green "┌─ Step 3/4: Running FIMO ($threads parallel threads)..."
+# step_start=$SECONDS
+
+# n=0
+# for meme_file in "$outputdir/memefiles"/*.txt; do
+#     ((n++))
+#     fimofile=$(basename "$meme_file")
+#     fimo --no-qvalue --text --thresh "$fimothresh" --verbosity 1 \
+#          --bgfile "$outputdir/genome.bg" "$meme_file" "$genomefile_temp" \
+#          > "$outputdir/fimo/$fimofile" &
+#     [ $((n % threads)) -eq 0 ] && wait
+# done
+# wait
+
+# # Post-process FIMO output - restore ':' in sequence names
+# for fimofile in "$outputdir/fimo"/*.txt; do
+#     sed -i '' 's/__COLON__/:/g' "$fimofile"
+# done
+# rm -f "$genomefile_temp"
+# print_orange "   └─ Restored sequence names and cleaned up temporary file"
+
+# print_elapsed_time "$step_start"
+
+# # ==============================================================================
+# # STEP 4: INDEX AND FILTER MOTIF HITS
+# # ==============================================================================
+
+# print_green "┌─ Step 4/4: Indexing and filtering motif hits..."
+# step_start=$SECONDS
+
+# "$pmetDir/index_cpp" \
+#     -f "$outputdir/fimo" \
+#     -k "$maxk" \
+#     -n "$topn" \
+#     -p "$outputdir/promoter_lengths.txt" \
+#     -o "$outputdir" \
+#     || error_exit "pmetindex failed"
+
+# print_elapsed_time "$step_start"
+
 n=0
-# paralellise this loop
-for memefile in $outputdir/memefiles/*.txt; do
-    let n=$n+1
-    fimofile=`basename $memefile`
-    echo "    $fimofile"
+for meme_file in "$outputdir/memefiles"/*.txt; do
+    ((n++))
+    fimofile=$(basename "$meme_file")
+    "$pmetDir/index_fimo_fused"             \
+        --no-qvalue                         \
+        --text                              \
+        --thresh "$fimothresh"              \
+        --verbosity 1                       \
+        --bgfile "$outputdir/genome.bg"     \
+        --topn "$topn"                      \
+        --topk "$maxk"                      \
+        --oc "$outputdir"                   \
+        "$meme_file"                        \
+        "$genomefile_temp"                  \
+        "$outputdir/promoter_lengths.txt" &
+    [ $((n % threads)) -eq 0 ] && wait
+done
+wait
 
-    fimo                              \
-        --no-qvalue                   \
-        --text                        \
-        --thresh $fimothresh          \
-        --verbosity 1                 \
-        --bgfile $outputdir/genome.bg \
-        $memefile                     \
-        $genomefile                   \
-        > $outputdir/fimo/$fimofile &
-    [ `expr $n % $threads` -eq 0 ] && wait
+# Post-process FIMO output - restore ':' in sequence names
+for fimofile in "$outputdir/fimohits"/*.txt; do
+    sed -i '' 's/__COLON__/:/g' "$fimofile"
 done
 
-print_green "Running pmet index..."
-mkdir -p $outputdir/fimohits
-# run pmet index
-scripts/pmetindex                      \
-    -f $outputdir/fimo                 \
-    -k 5                               \
-    -n 5000                            \
-    -p $outputdir/promoter_lengths.txt \
-    -o $outputdir
+sed -i '' 's/__COLON__/:/g' "$outputdir/promoter_lengths.txt"
+sed -i '' 's/__COLON__/:/g' "$universefile"
 
 
-print_green "Delete unnecessary files..."
-rm -rf $outputdir/memefiles
-rm -rf $outputdir/genome.bg
-rm -rf $outputdir/fimo
-rm -rf $outputdir/no_duplicates.fa
+
+rm -f "$genomefile_temp"
+print_orange "   └─ Restored sequence names and cleaned up temporary file"
+
+print_elapsed_time "$step_start"
+
+# ==============================================================================
+# SUMMARY
+# ==============================================================================
+
+print_green "\n╔══════════════════════════════════════════════════════════════════╗"
+print_green "║                          SUMMARY                                 ║"
+print_green "╚══════════════════════════════════════════════════════════════════╝"
+print_white "  Output directory       : "; print_orange "$outputdir"
+print_green "────────────────────────────────────────────────────────────────────"
+print_white "  Generated files:\n"
+
+for file in promoter_lengths.txt IC.txt binomial_thresholds.txt universe.txt; do
+    if [ -f "$outputdir/$file" ]; then
+        print_green "    ✓ $file"
+    else
+        print_red "    ✗ $file (missing)"
+    fi
+done
+
+print_green "────────────────────────────────────────────────────────────────────"
+print_elapsed_time_with_status "$start_time" "success"
+print_green "\n✓ PMET indexing completed successfully!\n"

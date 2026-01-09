@@ -1,169 +1,134 @@
 #!/bin/bash
 
-# Simple reminder of required tools and libraries for PMET/Shiny stack.
-# This script does NOT install anything; it only lists what you need and optionally
-# tells you whether each binary is currently on PATH.
+# ==============================================================================
+# PMET Requirements Checker
+# ==============================================================================
+# Checks required tools and optionally sets up PMET build environment.
+# ==============================================================================
 
 set -euo pipefail
 
-# Try to load shared color helpers; fall back to plain echo if unavailable.
 script_dir=$(cd -- "$(dirname "$0")" && pwd)
+
+# Load color helpers or use fallback
 if [ -f "$script_dir/scripts/lib/print_colors.sh" ]; then
-    # shellcheck source=/dev/null
     source "$script_dir/scripts/lib/print_colors.sh"
 else
-    print_green() { printf "%s\n" "$1"; }
-    print_orange() { printf "%s\n" "$1"; }
-    print_fluorescent_yellow() { printf "%s\n" "$1"; }
-    print_red() { printf "%s\n" "$1"; }
+    print_green() { printf "\033[32m%s\033[0m\n" "$1"; }
+    print_orange() { printf "\033[33m%s\033[0m\n" "$1"; }
+    print_fluorescent_yellow() { printf "\033[93m%s\033[0m\n" "$1"; }
+    print_red() { printf "\033[31m%s\033[0m\n" "$1"; }
 fi
 
+# ==============================================================================
+# Helper Functions
+# ==============================================================================
+
 check_bin() {
-    local name="$1"
-    if command -v "$name" >/dev/null 2>&1; then
-        print_green "[FOUND] $name"
+    if command -v "$1" >/dev/null 2>&1; then
+        print_green "[✓] $1"
     else
-        print_red "[MISSING] $name"
-    fi
-}
-
-is_build_empty() {
-    local build_dir="$script_dir/build"
-    if [ ! -d "$build_dir" ]; then
-        return 0
-    fi
-    if find "$build_dir" -mindepth 1 -print -quit >/dev/null 2>&1; then
-        return 1
-    fi
-    return 0
-}
-
-setup_pmet_upstream() {
-    local external_dir="$script_dir/external"
-    local upstream_dir="$external_dir/pmet_project"
-    local upstream_repo="https://github.com/duocang/PMET_project"
-
-    if ! command -v git >/dev/null 2>&1; then
-        print_red "git is required to fetch upstream PMET sources"
-        exit 1
-    fi
-
-    mkdir -p "$external_dir"
-
-    if [ ! -d "$upstream_dir/.git" ]; then
-        print_orange "[SETUP] Adding PMET_project as submodule at external/pmet_project"
-        git submodule add "$upstream_repo" "$upstream_dir"
-    else
-        print_orange "[SETUP] Updating PMET_project submodule"
-        git -C "$upstream_dir" pull --ff-only
-    fi
-
-    print_orange "[SETUP] Building upstream PMET binaries"
-    (cd "$upstream_dir" && bash scripts/build_all.sh)
-
-    if [ -d "$upstream_dir/build" ]; then
-        mkdir -p "$script_dir/build"
-        rsync -a --delete "$upstream_dir/build/" "$script_dir/build/"
-        print_green "[DONE] Upstream build copied to ./build"
-    else
-        print_red "[ERROR] Upstream build directory not found after build_all.sh"
-        exit 1
-    fi
-}
-
-maybe_setup_pmet_upstream() {
-    if ! is_build_empty; then
-        return 0
-    fi
-
-    print_orange "[INFO] build/ directory is empty. Run upstream PMET setup? (auto-run in 3s; press n to skip)"
-    printf "Run setup now? [Y/n] (auto in 3s): "
-
-    local reply=""
-    if read -r -t 3 reply; then
-        case "$reply" in
-            n|N)
-                print_orange "[SKIP] Upstream setup skipped by user"
-                return 0
-                ;;
-        esac
-    else
-        reply="y"
-        printf "\n"
-    fi
-
-    if [ -z "$reply" ] || [[ "$reply" =~ ^[Yy]$ ]]; then
-        setup_pmet_upstream
-    else
-        print_orange "[SKIP] Upstream setup skipped"
+        print_red "[✗] $1"
     fi
 }
 
 print_list() {
     local title="$1"; shift
     print_orange "$title"
-    printf '%s\n' "$@" | sed 's/^/  - /'
+    for item in "$@"; do
+        echo "  - $item"
+    done
 }
 
-# Core binaries
-core_bins=(
-    "R"
-    "Rscript"
-    "python3"
-    "pip"
-    "fasta-get-markov"
-    "pmetindex"
-    "pmet"
-    "pmetParallel"
-    "parallel"
-    "bedtools"
-    "samtools"
-)
+# ==============================================================================
+# Setup PMET from upstream (simple version)
+# ==============================================================================
 
-# R packages (install via scripts/R_utils/install_packages.R)
-r_packages=(
-    "data.table"
-    "tidyverse"
-    "ggplot2"
-    "hrbrthemes"
-    "dplyr"
-    "readr"
-    "rJava"
-)
+setup_pmet() {
+    local upstream_dir="$script_dir/external/pmet_project"
+    local upstream_repo="https://github.com/duocang/PMET_project"
 
-# Python packages
-py_packages=(
-    "numpy"
-    "pandas"
-    "scipy"
-    "bio"
-    "biopython"
-)
+    print_orange "\n[SETUP] Setting up PMET from upstream..."
 
-print_fluorescent_yellow "PMET / Shiny requirements reminder (no installs performed)"
-print_fluorescent_yellow "========================================================"
+    # Clone or update
+    if [ -d "$upstream_dir" ]; then
+        print_orange "Updating existing repository..."
+        git -C "$upstream_dir" pull --ff-only || true
+    else
+        print_orange "Cloning PMET_project..."
+        mkdir -p "$script_dir/external"
+        git clone "$upstream_repo" "$upstream_dir"
+    fi
 
-if [[ ${1-} == "--setup-pmet" ]]; then
-    setup_pmet_upstream
+    # Build
+    print_orange "Building PMET binaries..."
+    (cd "$upstream_dir" && bash scripts/build_all.sh)
+
+    # Copy build artifacts
+    if [ -d "$upstream_dir/build" ]; then
+        mkdir -p "$script_dir/build"
+        cp -r "$upstream_dir/build/"* "$script_dir/build/"
+        print_green "[✓] Build complete! Binaries copied to ./build"
+    else
+        print_red "[✗] Build failed - no build directory found"
+        exit 1
+    fi
+}
+
+# ==============================================================================
+# Configuration
+# ==============================================================================
+
+core_bins=("R" "Rscript" "python3" "pip" "pip3" "fasta-get-markov" "pmetindex" "pmet" "pmetParallel" "parallel" "bedtools" "samtools")
+r_packages=("data.table" "tidyverse" "ggplot2" "hrbrthemes" "dplyr" "readr" "rJava")
+py_packages=("numpy" "pandas" "scipy" "bio" "biopython")
+
+# ==============================================================================
+# Main
+# ==============================================================================
+
+print_fluorescent_yellow "\n=========================================="
+print_fluorescent_yellow "  PMET Requirements Checker"
+print_fluorescent_yellow "==========================================\n"
+
+# Handle --setup-pmet flag
+if [[ ${1:-} == "--setup-pmet" ]]; then
+    setup_pmet
     exit 0
 fi
 
-# If root build/ is empty, ask (in English) and auto-run setup after 3s unless user declines.
-maybe_setup_pmet_upstream
+# Check if build directory is empty and offer to set up
+if [ ! -d "$script_dir/build" ] || [ -z "$(ls -A "$script_dir/build" 2>/dev/null)" ]; then
+    print_orange "[!] build/ directory is empty."
+    read -r -t 5 -p "Run PMET setup now? [Y/n] (auto-yes in 5s): " reply || reply="y"
+    echo
+    if [[ -z "$reply" || "$reply" =~ ^[Yy]$ ]]; then
+        setup_pmet
+    fi
+fi
 
-# Binary presence check
-print_orange "\nBinary availability (PATH)"
+# Check binaries
+print_orange "Checking binaries..."
 for bin in "${core_bins[@]}"; do
     check_bin "$bin"
 done
 
-# Summaries
-print_list "\nR packages to have installed" "${r_packages[@]}"
-print_list "\nPython packages to have installed" "${py_packages[@]}"
+# Download genome/annotation if missing
+print_orange "\nChecking genome data..."
+if [[ ! -s data/TAIR10.fasta || ! -s data/TAIR10.gff3 ]]; then
+    print_orange "Downloading genome and annotation..."
+    bash scripts/fetch_tair10.sh
+else
+    print_green "[✓] Genome and annotation are ready!"
+fi
 
-print_orange "\nNotes:"
-print_orange "- Install R packages with: Rscript scripts/R_utils/install_packages.R"
-print_orange "- Install Python packages with: pip install <pkg>"
-print_orange "- MEME/FIMO and PMET binaries are built via scripts/00_binary_compile.sh (interactive)."
-print_orange "- Use the built artifacts: copy or symlink external/pmet_project/build to project root if desired"
-print_orange "- This script is informational only; it does not change your system."
+# Show package lists
+print_list "\nR packages needed:" "${r_packages[@]}"
+print_list "\nPython packages needed:" "${py_packages[@]}"
+
+print_orange "\n------------------------------------------"
+print_orange "Tips:"
+print_orange "  • Install R packages:      Rscript scripts/r/install_packages.R"
+print_orange "  • Install Python packages: pip install numpy pandas scipy biopython"
+print_orange "  • Setup PMET binaries:     $0 --setup-pmet"
+print_orange "------------------------------------------\n"

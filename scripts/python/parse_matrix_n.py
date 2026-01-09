@@ -32,7 +32,7 @@ def geo_mean(iterable):
 def geom_binom_test(coin,promsize,mot_len):
     binom_p=[]
     flips = 2*(promsize - mot_len + 1)
-    
+
     for k in range(0,len(coin)):
         vals=np.array(coin[:k+1],dtype=float) #elements 0 to k
         geom = geo_mean(vals)
@@ -139,13 +139,13 @@ for i in range(1,fimo.shape[0]):
     if (fimo[i,1] != fimo[start_pos,1]):
         print(i)
         #we've found a new gene to test
-        
+
         ###THIS BIT DONE
         motif_hits = fimo[start_pos:i,]
         # extarct top 5 motif hits in this promoter
         motif_hits = motif_hits[np.argsort(motif_hits[:,6])]
-        
-        
+
+
         motif_hits = motif_hits[0:min(args.tar,motif_hits.shape[0]),:] #argument here, tar is k
         binom_p = []
         #how many "flips" will we be making

@@ -171,7 +171,8 @@ PmetHistogramPlot <- function(res            = NULL,
          dpi = 300,
          units="in",
          width  = histgram_width,
-         height = (histgram_width / 3 ) * ceiling(length(clusters)/ncols))
+         height = (histgram_width / 3 ) * ceiling(length(clusters)/ncols),
+         create.dir = TRUE)
 
   return(p)
 }

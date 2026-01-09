@@ -1,55 +1,30 @@
 #!/bin/bash
 
-function error_exit() {
-    echo "ERROR: $1" >&2
-    usage
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+print_colors_lib="$script_dir/scripts/lib/print_colors.sh"
+
+if [ ! -f "$print_colors_lib" ]; then
+    echo "ERROR: Missing print_colors library at $print_colors_lib" >&2
     exit 1
-}
+fi
 
-print_red(){
-    RED='\033[0;31m'
-    NC='\033[0m' # No Color
-    printf "${RED}$1${NC}\n"
-}
+# shellcheck source=/dev/null
+source "$print_colors_lib"
 
-print_green(){
-    GREEN='\033[0;32m'
-    NC='\033[0m' # No Color
-    printf "${GREEN}$1${NC}\n"
-}
-
-print_orange(){
-    ORANGE='\033[0;33m'
-    NC='\033[0m' # No Color
-    printf "${ORANGE}$1${NC}\n"
-}
-
-print_fluorescent_yellow(){
-    FLUORESCENT_YELLOW='\033[1;33m'
-    NC='\033[0m' # No Color
-    printf "${FLUORESCENT_YELLOW}$1${NC}\n"
-}
-
-print_white(){
-    WHITE='\033[1;37m'
-    NC='\033[0m' # No Color
-    printf "${WHITE}$1${NC}"
-}
-
-# Give execute permission to all users for the file.
-chmod a+x scripts/cpp_debug_needed/homotypic_intervals.sh
-
-##################################### Parameters #######################################
-# tool
-toolDir=scripts
-HOMOTYPIC=$toolDir/cpp_debug_needed/homotypic_intervals.sh
-HETEROTYPIC=$toolDir/pmetParallel
-
-chmod a+x $HOMOTYPIC
-chmod a+x $HETEROTYPIC
-
-threads=24
+##################################### 1. User input #######################################
 res_dir=results/02_PMET_intervals
+
+genome=data/homotypic_intervals/intervals.fa
+meme=data/homotypic_intervals/motif_more.meme
+gene_input_file=data/homotypic_intervals/intervals.txt
+# genome=data_temp/1.fa
+# meme=data_temp/NKX6_test.meme
+# gene_input_file=data_temp/1.txt
+
+##################################### 2. Parameters #######################################
+threads=1
+
+toolDir=scripts
 
 # homotypic
 gff3id="gene_id="
@@ -62,29 +37,32 @@ fimothresh=0.05
 distance=1000
 gff3id="gene_id="
 delete_temp=yes
-
-
-# data
-genome=data/homotypic_intervals/intervals.fa
-meme=data/homotypic_intervals/motif_more.meme
-
-# output
-homotypic_output=$res_dir/01_homotypic
-
-
-# heterotypic
-task=gene
-gene_input_file=data/homotypic_intervals/intervals.txt
-heterotypic_output=$res_dir/02_heterotypic
 icthresh=4
 
+################################### 3. mkdir and path #####################################
+rm -rf $res_dir
+mkdir -p $res_dir
+# output
+homotypic_output=$res_dir/01_homotypic
+heterotypic_output=$res_dir/02_heterotypic
 mkdir -p $homotypic_output
 mkdir -p $heterotypic_output
 
+################################# 4. chmod execute permission ############################
+# Give execute permission to all users for the file.
+# tool path
+HOMOTYPIC=$toolDir/cpp_debug_needed/homotypic_intervals.sh
+HETEROTYPIC=$toolDir/pmetParallel
 
-##################################### Running FIMO #####################################
-print_green "Running fimo...\n"
+chmod a+x scripts/cpp_debug_needed/homotypic_intervals.sh
+chmod a+x $HOMOTYPIC
+chmod a+x $HETEROTYPIC
 
+find ../../01_PMETDEV-code/debug/scripts/ -type f \( -name "*.sh" -o -name "*.perl" \) -exec chmod a+x {} \;
+
+##################################### 5. Homotypic #####################################
+print_green "Running homotypic...\n"
+echo "Homotypic output: $homotypic_output"
 $HOMOTYPIC               \
     -r $toolDir          \
     -o $homotypic_output \
@@ -95,10 +73,7 @@ $HOMOTYPIC               \
     $genome              \
     $meme
 
-
-
-################################### Heterotypic #####################################
-
+################################### 6. Heterotypic #####################################
 # # remove genes not present in promoter_lengths.txt
 # awk -F"\t" '{print $1"\t"}' homotypic_output/promoter_lengths.txt > homotypic_output/temp_genes_list.txt
 # cat homotypic_output/temp_genes_list.txt | while read line; do
@@ -107,7 +82,7 @@ $HOMOTYPIC               \
 # rm homotypic_output/temp_genes_list.txt
 
 print_green "Searching for heterotypic motif hits..."
-mkdir -p $output
+echo "Heterotypic output: $heterotypic_output"
 $HETEROTYPIC                                     \
     -d .                                         \
     -g $gene_input_file                          \
@@ -122,10 +97,12 @@ $HETEROTYPIC                                     \
 cat $heterotypic_output/*.txt > $heterotypic_output/motif_output.txt
 rm $heterotypic_output/temp*.txt
 
-
-##################################### Heatmap ##################################
-
+#################################### Heatmap ##################################
 Rscript 05_heatmap.R                     \
     Overlap                              \
     $heterotypic_output/heatmap.png      \
-    $heterotypic_output/motif_output.txt
+    $heterotypic_output/motif_output.txt \
+    5                                    \
+    3                                    \
+    6                                    \
+    FALSE

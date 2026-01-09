@@ -111,10 +111,10 @@ if [[ ! -f "$universefile" || ! -f "$outputdir/promoter_lengths.txt" ]]; then
 
 	# should have been done by consistency checker
 	# *** ADD THE DEPUPLICATION OF THE FASTA FILE HERE ****
-	python3 $pmetroot/deduplicate.py $genomefile $outputdir/no_duplicates.fa
+	python3 $pmetroot/python/deduplicate.py $genomefile $outputdir/no_duplicates.fa
 
 	# generate the promoter lengths file from the fasta file
-	python3 $pmetroot/parse_promoter_lengths_from_fasta.py $outputdir/no_duplicates.fa $outputdir/promoter_lengths.txt
+	python3 $pmetroot/python/parse_promoter_lengths_from_fasta.py $outputdir/no_duplicates.fa $outputdir/promoter_lengths.txt
 	rm -f $outputdir/no_duplicates.fa
 
   cut -f 1  $outputdir/promoter_lengths.txt > $universefile
@@ -138,10 +138,10 @@ echo -e "0.05\tProcessing motifs..." >$progFile
 ###†Make motif  files from user's meme file
 [ ! -d $outputdir/memefiles ] && mkdir $outputdir/memefiles
 
-python3 $pmetroot/parse_memefile.py $memefile $outputdir/memefiles/
+python3 $pmetroot/python/parse_memefile.py $memefile $outputdir/memefiles/
 
 ### creates IC.txt tsv file from, motif files
-python3 $pmetroot/calculateICfrommeme_IC_to_csv.py $outputdir/memefiles/ $outputdir/IC.txt
+python3 $pmetroot/python/calculateICfrommeme_IC_to_csv.py $outputdir/memefiles/ $outputdir/IC.txt
 
 ###†Create a fimo hits file form each motif file
 

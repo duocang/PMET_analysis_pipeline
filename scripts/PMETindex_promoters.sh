@@ -178,7 +178,7 @@ fi
 
 # -------------------------------------------------------------------------------------------
 # 3. extract chromosome , start, end, gene ('gene_id' for input) ...
-print_fluorescent_yellow "     3. Extracting chromosome, start, end, gene ..."
+print_fluorescent_yellow "     3. Extracting chromosome, start, end, gene"
 
 # 使用grep查找字符串 check if gene_id is present
 if grep -q "$gff3id" "$indexingOutputDir/genelines.gff3"; then
@@ -413,7 +413,7 @@ runFimoIndexing () {
         -k $maxk                     \
         -n $topn                     \
         -o $indexingOutputDir                \
-        -p $indexingOutputDir/promoter_lengths.txt > $indexingOutputDir/pmetindex.log
+        -p $indexingOutputDir/promoter_lengths.txt
     # rm -rf $indexingOutputDir/fimo/$filename
 }
 export -f runFimoIndexing

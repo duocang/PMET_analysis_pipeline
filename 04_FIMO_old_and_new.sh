@@ -73,10 +73,10 @@ scripts/pmetindex                                    \
 
 # individual motif files from user's meme file
 mkdir -p $output/memefiles
-python3 scripts/parse_memefile.py src/meme-5.5.3/fimo_test/motif.meme $output/memefiles/
+python3 scripts/python/parse_memefile.py src/meme-5.5.3/fimo_test/motif.meme $output/memefiles/
 
 # IC.txt
-python3 scripts/calculateICfrommeme_IC_to_csv.py \
+python3 scripts/python/calculateICfrommeme_IC_to_csv.py \
     $output/memefiles/                          \
     $output/IC.txt
 

@@ -235,7 +235,7 @@ fi
 
 # -------------------------------------------------------------------------------------------
 # 3. extract chromosome , start, end, gene ('gene_id' for input) ...
-print_fluorescent_yellow "     3. Extracting chromosome, start, end, gene..."
+print_fluorescent_yellow "     3. Extracting chromosome, start, end, gene"
 python3 $pmetroot/parse_mRNAlines.py $gff3id $indexingOutputDir/genelines.gff3 $bedfile
 
 # -------------------------------------------------------------------------------------------

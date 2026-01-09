@@ -19,6 +19,7 @@ install_and_check_func <- function(package) {
 }
 
 # 安装 devtools remotes 和 BiocManager 包
+install.packages("https://cran.r-project.org/src/contrib/Archive/Matrix.utils/Matrix.utils_0.9.8.tar.gz", type = "source", repos = NULL)
 install_and_check_func("devtools")
 install_and_check_func("remotes")
 install_and_check_func("BiocManager")
@@ -74,10 +75,12 @@ packages_bio <- c("rtracklayer", "DESeq2", "WGCNA", "GEOqueary", "limma", "edgeR
                   "GSEABase", "clusterProfiler", "ConsensusClusterPlus", "GSVA",
                   "pheatmap", "scFeatureFilter", "AUCell", "ComplexHeatmap",
                   "org.Mm.eg.db", "org.Dr.eg.db", "org.Hs.eg.db", "pcaMethods", "scde",
-                  "enrichplot")
+                  "enrichplot", "CellMixS", "scater", "org.At.tair.db", "AnnotationHub",
+                  "biomaRt", "topGO", "Rgraphviz", "pathview", "rtracklayer", "AnnotationDbi")
 
 # normal packages
 packages_normal <- c(
+  "grr",
   "robustbase",
   "ucminf",
   "ade4",

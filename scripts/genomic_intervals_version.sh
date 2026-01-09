@@ -94,10 +94,10 @@ cd $outuptdir;
 #python3 $pmetroot/parse_promoter_lengths.py peaks.bed
 
 # *** ADD THE DEPUPLICATION OF THE FASTA FILE HERE ****
-python3 $pmetroot/deduplicate.py $peaksfasta 'peaks_no_duplicates.fa'
+python3 $pmetroot/python/deduplicate.py $peaksfasta 'peaks_no_duplicates.fa'
 
 # generate the promoter lengths file from the fasta file
-python3 $pmetroot/parse_promoter_lengths_from_fasta.py 'peaks_no_duplicates.fa' 'promoter_lengths.txt'
+python3 $pmetroot/python/parse_promoter_lengths_from_fasta.py 'peaks_no_duplicates.fa' 'promoter_lengths.txt'
 
 #now we can actually FIMO our way to victory
 fasta-get-markov peaks.fa > peaks.bg
@@ -112,9 +112,9 @@ fasta-get-markov peaks.fa > peaks.bg
 
 mkdir memefiles
 
-python3 $pmetroot/parse_memefile.py $memedir
+python3 $pmetroot/python/parse_memefile.py $memedir
 
-python3 $pmetroot/calculateICfrommeme.py
+python3 $pmetroot/python/calculateICfrommeme.py
 
 
 runIndexing () {

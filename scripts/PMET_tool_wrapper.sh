@@ -118,7 +118,7 @@ fi
 
 
 universe_size=`cat $pmetindex/promoter_lengths.txt | wc -l`
-python3 $pmetroot/colocalisationTest.py $ic $universe_size $pmetindex $inputfile
+python3 $pmetroot/python/colocalisationTest.py $ic $universe_size $pmetindex $inputfile
 
 ## Apply three different multiple testing corrections: BH, Bonferroni (within each cluster)
 # and Global Bonferroni (across clusters)
@@ -126,8 +126,8 @@ python3 $pmetroot/MTC.py $mtc
 #
 # ## Make the files more user friendly by adding helpful headers.
  python3 $pmetroot/headers.py
- 
- 
+
+
  #replace this with call to C++ binary
 
 

@@ -532,16 +532,16 @@ if [ true ]; then
             fi
 
             print_orange "Installing R packages... It takes minutes..."
-            chmod a+x scripts/R_utils/install_packages.R
+            chmod a+x scripts/r/install_packages.R
             # Rscript R/utils/install_packages.R
-            Rscript scripts/R_utils/install_packages.R 2>&1 | tee log_R_packages_installation.log | grep -E "\* DONE \("
+            Rscript scripts/r/install_packages.R 2>&1 | tee log_R_packages_installation.log | grep -E "\* DONE \("
             awk '/The installed packages are as follows:/{flag=1} flag' log_R_packages_installation.log
         else
             print_orange "    No R packages installed"
         fi
     else
         print_red                "\n7. No R packages installed because there is no R installed."
-        print_fluorescent_yellow "    Run 'scripts/R_utils/install_packages.R' to install R packages later. "
+        print_fluorescent_yellow "    Run 'scripts/r/install_packages.R' to install R packages later. "
     fi # if command -v R >/dev/null 2>&1; then
 fi
 

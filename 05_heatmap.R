@@ -6,12 +6,12 @@ suppressPackageStartupMessages({
   library(ggpubr)
   library(hrbrthemes)
 
-  source("scripts/R_utils/process_pmet_result.R")
-  source("scripts/R_utils/motif_pair_gene_diagonal.R")
-  source("scripts/R_utils/motif_pair_diagonal.R")
-  source("scripts/R_utils/motif_pair_plot_hetero.R")
-  source("scripts/R_utils/motif_pair_plot_homog.R")
-  source("scripts/R_utils/heatmap.R")
+  source("scripts/r/process_pmet_result.R")
+  source("scripts/r/motif_pair_gene_diagonal.R")
+  source("scripts/r/motif_pair_diagonal.R")
+  source("scripts/r/motif_pair_plot_hetero.R")
+  source("scripts/r/motif_pair_plot_homog.R")
+  source("scripts/r/heatmap.R")
 })
 
 args <- commandArgs(trailingOnly = TRUE)
