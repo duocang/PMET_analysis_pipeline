@@ -118,7 +118,58 @@ if [ ${#pipelines[@]} -eq 0 ]; then
     exit 1
 fi
 
-# Main loop
+# Check if running with command line arguments
+if [ $# -gt 0 ]; then
+    arg="$1"
+
+    # Try to match by index number
+    if [[ "$arg" =~ ^[0-9]+$ ]]; then
+        if [ "$arg" -ge 0 ] && [ "$arg" -lt ${#pipelines[@]} ]; then
+            run_pipeline "${pipelines[$arg]}"
+            exit $?
+        else
+            print_red "Error: Invalid pipeline index: $arg"
+            print_orange "Valid range: 0-$((${#pipelines[@]}-1))"
+            exit 1
+        fi
+    fi
+
+    # Try to match by script name (exact match)
+    for script in "${pipelines[@]}"; do
+        if [ "$script" = "$arg" ]; then
+            run_pipeline "$script"
+            exit $?
+        fi
+    done
+
+    # Try to match by partial name or keyword
+    matches=()
+    for i in "${!pipelines[@]}"; do
+        if [[ "${pipelines[$i]}" == *"$arg"* ]]; then
+            matches+=("$i")
+        fi
+    done
+
+    if [ ${#matches[@]} -eq 1 ]; then
+        run_pipeline "${pipelines[${matches[0]}]}"
+        exit $?
+    elif [ ${#matches[@]} -gt 1 ]; then
+        print_red "Error: Ambiguous match for '$arg'. Multiple pipelines found:"
+        for idx in "${matches[@]}"; do
+            print_orange "  [$idx] ${pipelines[$idx]}"
+        done
+        exit 1
+    else
+        print_red "Error: No pipeline found matching '$arg'"
+        print_orange "Available pipelines:"
+        for i in "${!pipelines[@]}"; do
+            print_orange "  [$i] ${pipelines[$i]}"
+        done
+        exit 1
+    fi
+fi
+
+# Main loop (interactive mode)
 while true; do
     show_header
     show_menu
