@@ -40,7 +40,6 @@ overlap="AllowOverlap"
 utr="No"
 gff3id='gene_id'
 toolDir="scripts"
-pmetDir="build"
 threads=4
 delete=yes
 isPoisson=no
@@ -50,6 +49,7 @@ indexingOutputDir=
 genomefile=
 gff3file=
 memefile=
+pmetDir=
 
 # deal with arguments
 # if none, exit
@@ -85,6 +85,10 @@ shift $((OPTIND - 1))
 genomefile="$1"
 gff3file="$2"
 memefile="$3"
+
+# Compute pmetDir based on toolDir
+pmetDir="$(dirname "$toolDir")/build"
+
 universefile="$indexingOutputDir/universe.txt"
 bedfile="$indexingOutputDir/genelines.bed"
 
@@ -191,6 +195,17 @@ bedtools flank                             \
 sortBed -i "$indexingOutputDir/promoters_not_sorted.bed" > "$indexingOutputDir/promoters.bed"
 rm -rf "$indexingOutputDir/promoters_not_sorted.bed"
 
+
+# -------------------------------------------------------------------------------------------
+print_fluorescent_yellow "     8.1 Remove promoters with less than 20 base pairs"
+# remove promoter length < 20
+awk '($3 - $2) >= 10' $indexingOutputDir/promoters.bed > $indexingOutputDir/promoters_.bed
+mv $indexingOutputDir/promoters_.bed $indexingOutputDir/promoters.bed
+awk '($3 - $2) <  10' $indexingOutputDir/promoters.bed > $indexingOutputDir/8_promoters_less_20.bed
+
+
+
+
 # -------------------------------------------------------------------------------------------
 # 9. remove overlapping promoter chunks
 overlap_lower=$(echo "$overlap" | tr '[:upper:]' '[:lower:]')
@@ -206,6 +221,12 @@ else
     print_fluorescent_yellow "     9. (skipped) Removing overlapping promoter chunks (promoters.bed)"
 fi
 
+# -------------------------------------------------------------------------------------------
+# remove promoter length < 20
+print_fluorescent_yellow "     9.1 Remove promoters with less than 20 base pairs"
+awk '($3 - $2) <  20' $indexingOutputDir/promoters.bed > $indexingOutputDir/9_promoters_less_20.bed
+awk '($3 - $2) >= 20' $indexingOutputDir/promoters.bed > $indexingOutputDir/promoters_.bed
+mv $indexingOutputDir/promoters_.bed $indexingOutputDir/promoters.bed
 
 # -------------------------------------------------------------------------------------------
 # 10. check split promoters. if so, keep the bit closer to the TSS
@@ -231,6 +252,77 @@ print_fluorescent_yellow "    12. Promoter lengths from promoters.bed (promoter_
 awk '{print $4 "\t" ($3 - $2)}' "$indexingOutputDir/promoters.bed" \
     > "$indexingOutputDir/promoter_lengths.txt"
 
+
+
+
+
+
+
+
+
+
+
+# # -------------------------------------------------------------------------------------------
+# # 13. filters out the rows with NEGATIVE lengths
+# print_light_blue "    13. Filtering out the rows of promoter_lengths_all.txt with NEGATIVE lengths"
+# while read -r gene length; do
+#     # Check if the length is a positive number
+#     if (( length >= 0 )); then
+#         # Append rows with positive length to the output file
+#         echo "$gene $length" >> $indexingOutputDir/promoter_lengths.txt
+#     else
+#         # Append rows with negative length to the deleted file
+#         echo "$gene $length" >> $indexingOutputDir/promoter_length_deleted.txt
+#     fi
+# done < $indexingOutputDir/promoter_lengths_all.txt
+
+# # -------------------------------------------------------------------------------------------
+# # 14. remove NEGATIVE genes
+# if [ -f "$indexingOutputDir/promoter_length_deleted.txt" ]; then
+#     print_light_blue "    14. Finding genes with NEGATIVE promoter lengths (genes_negative.txt)"
+#     cut -d " " \
+#         -f1  $indexingOutputDir/promoter_length_deleted.txt \
+#         > $indexingOutputDir/genes_negative.txt
+# else
+#     print_light_blue "    14. (skipped) Finding genes with NEGATIVE promoter lengths (genes_negative.txt)"
+# fi
+
+# # -------------------------------------------------------------------------------------------
+# # 15. filter promoter annotation with negative length
+# if [ -f "$indexingOutputDir/promoter_length_deleted.txt" ]; then
+#     print_light_blue "    15. Removing promoter with negative length (promoters.bed)"
+#     grep -v -w -f \
+#         $indexingOutputDir/genes_negative.txt \
+#         $indexingOutputDir/promoters.bed \
+#         > $indexingOutputDir/filtered_promoters.bed
+
+#     mv $indexingOutputDir/promoters.bed $indexingOutputDir/promoters_before_filter.bed
+#     mv $indexingOutputDir/filtered_promoters.bed $indexingOutputDir/promoters.bed
+# else
+#     print_light_blue "    15. (skipped) Removing promoter with negative length (promoters.bed)"
+# fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------------------------------------------
 # 13. Update genes list
 print_fluorescent_yellow "    13. Update genes list: complete list of all genes found (universe.txt)"
@@ -255,14 +347,23 @@ sed 's/::.*//g' "$indexingOutputDir/promoters_rough.fa" > "$indexingOutputDir/pr
 print_fluorescent_yellow "    16. fasta-get-markov: a Markov model from promoters.fa. (promoters.bg)"
 fasta-get-markov "$indexingOutputDir/promoters.fa" > "$indexingOutputDir/promoters.bg"
 
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------------------------------------------
 # 17. IC.txt
 print_fluorescent_yellow "    17. Generating information content (IC.txt)"
 mkdir -p "$indexingOutputDir/memefiles"
 python3 "$toolDir/python/parse_memefile.py" "$memefile" "$indexingOutputDir/memefiles/"
-python3                                         \
+python3                                                \
     "$toolDir/python/calculateICfrommeme_IC_to_csv.py" \
-    "$indexingOutputDir/memefiles/"             \
+    "$indexingOutputDir/memefiles/"                    \
     "$indexingOutputDir/IC.txt"
 
 # -------------------------------------------------------------------------------------------
